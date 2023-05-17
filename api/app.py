@@ -22,7 +22,7 @@ httpErrorMsg = {
 
 class ShortLink(Resource):
     def get(self,key:str):
-        dataBase = redis.from_url(os.environ.get("REDIS_URL"))
+        dataBase = redis.from_url(os.environ.get("KV_URL"))
         link = dataBase.hget("links",key)
         
         if link != None:
