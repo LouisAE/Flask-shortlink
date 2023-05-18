@@ -86,7 +86,7 @@ class staticContent(Resource):
         content = dataBase.hget("static",key)
         
         if content != None:
-            return content.decode("utf-8")
+            return content.decode("utf-8").replace("\"","")
         else:
             return http_error(404,"The link cannot be found in the database")
     def post(self,key:str):
