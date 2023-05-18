@@ -23,9 +23,11 @@ httpErrorMsg = {
 class ShortLink(Resource):
     def get(self,key:str):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
+        if not dataBase.type(key) == b'string':
+            return http_error(403)
         link = dataBase.get(key)
         
-        if link != None and dataBase.type(key) == b'string':
+        if link != None and :
             return redirect(link.decode("utf-8"))
         else:
             return http_error(404,"The link cannot be found in the database")
