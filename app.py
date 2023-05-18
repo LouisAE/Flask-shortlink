@@ -83,12 +83,10 @@ api.add_resource(ShortLinkRoot, '/')
 class staticContent(Resource):
     def get(self,key:str):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
-        if not dataBase.type(key) == b'string':
-            return http_error(403)
-        content = dataBase.get(key)
+        content = dataBase.hget("static",key)
         
         if content != None:
-            return content.decode("utf-8"),200
+            return content.decode("utf-8")
         else:
             return http_error(404,"The link cannot be found in the database")
     def post(self,key:str):
