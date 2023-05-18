@@ -22,7 +22,7 @@ httpErrorMsg = {
 
 class ShortLink(Resource):
     def get(self,key:str):
-        dataBase = redis.from_url(os.environ.get("KV_URL"))
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
         link = dataBase.hget("links",key)
         
         if link != None:
@@ -46,7 +46,7 @@ class ShortLinkRoot(Resource):
         parser.add_argument("expire",type=int)#单位:天
         args = parser.parse_args()
         
-        dataBase = redis.from_url(os.environ.get("REDIS_URL"))
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
         
         if not dataBase.sismember("tokens",args["token"]):#鉴权
             return http_error(403,"Token invalid")
