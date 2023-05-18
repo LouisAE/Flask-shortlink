@@ -25,7 +25,7 @@ class ShortLink(Resource):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
         link = dataBase.get(key)
         
-        if link != None:
+        if link != None and dataBase.type(key) == b'string':
             return redirect(link.decode("utf-8"))
         else:
             return http_error(404,"The link cannot be found in the database")
