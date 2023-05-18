@@ -27,7 +27,7 @@ class ShortLink(Resource):
             return http_error(403)
         link = dataBase.get(key)
         
-        if link != None and :
+        if link != None:
             return redirect(link.decode("utf-8"))
         else:
             return http_error(404,"The link cannot be found in the database")
