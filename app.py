@@ -23,7 +23,7 @@ httpErrorMsg = {
 class ShortLink(Resource):
     def get(self,key:str):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
-        link = dataBase.hget("links",key)
+        link = dataBase.get(key)
         
         if link != None:
             return redirect(link.decode("utf-8"))
@@ -53,28 +53,29 @@ class ShortLinkRoot(Resource):
         if args["action"] == 0:
             md = md5()
             try:
-                md.update(args["link"].encode("utf-8"))
+                md.update(args["link"].encode())
             except AttributeError:#客户端可能没有提供链接
                 return http_error(400,"Link not provided")
             rdint = randint(0,31-5)
             key = md.hexdigest()[rdint:rdint+5]#从哈希散列中随机取5位作为key
-            dataBase.hset("links",key,args["link"])
+            dataBase.set(key,args["link"])
             
             responseJson = {"status":"success"}
             responseJson["link"] = os.environ.get("DOMAIN")+key
             responseJson["expire"] = 0
             
             if args["expire"] != None and args["expire"] != 0:#若过期时间存在且不为永久则设置
-                dataBase.expire("links",args["expire"]*86400)
+                dataBase.expire(key,args["expire"]*86400)
                 responseJson["expire"] = args["expire"]
             return responseJson,201
         
         if args["action"] == 1:
             if args["key"] == None:
                 return http_error(400,"Key not provided")
-            if not dataBase.hexists("links",args["key"]):
+            if dataBase.exists(args["key"]) and dataBase.type(args["key"]) == b'string':
+                dataBase.delete(args["key"])
+            else:
                 return http_error(404,"The link cannot be found in the database")
-            dataBase.hdel("links",args["key"])
             return {"status":"success","message":"Link deleted"},200
 api.add_resource(ShortLinkRoot, '/')
 
