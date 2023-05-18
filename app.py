@@ -1,8 +1,7 @@
-from flask import Flask,render_template,Response,request,redirect
-from flask_restful import Resource, Api,reqparse
+from flask import Flask,Response,request,redirect
+from flask_restful import Resource,Api,reqparse
 from requests import get
 import redis
-from json import loads
 import os
 from hashlib import md5
 from random import randint
@@ -81,7 +80,21 @@ class ShortLinkRoot(Resource):
             return {"status":"success","message":"Link deleted"},200
 api.add_resource(ShortLinkRoot, '/')
 
+class staticContent(Resource):
+    def get(self,key:str):
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
+        if not dataBase.type(key) == b'string':
+            return http_error(403)
+        content = dataBase.get(key)
         
+        if content != None:
+            return content.decode("utf-8"),200
+        else:
+            return http_error(404,"The link cannot be found in the database")
+    def post(self,key:str):
+        return http_error(405)
+        
+api.add_resource(staticContent,'/static/<key>')        
 #http错误处理，通过用户代理判断应该返回什么错误内容
 def http_error(error_code:int,msg=None):
     responseJson = {"status":"error"}
