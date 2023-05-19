@@ -1,8 +1,7 @@
-from flask import Flask,render_template,Response,request,redirect
-from flask_restful import Resource, Api,reqparse
+from flask import Flask,Response,request,redirect
+from flask_restful import Resource,Api,reqparse
 from requests import get
 import redis
-from json import loads
 import os
 from hashlib import md5
 from random import randint
@@ -22,8 +21,10 @@ httpErrorMsg = {
 
 class ShortLink(Resource):
     def get(self,key:str):
-        dataBase = redis.from_url(os.environ.get("KV_URL"))
-        link = dataBase.hget("links",key)
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
+        if not dataBase.type(key) == b'string':
+            return http_error(403)
+        link = dataBase.get(key)
         
         if link != None:
             return redirect(link.decode("utf-8"))
@@ -46,39 +47,52 @@ class ShortLinkRoot(Resource):
         parser.add_argument("expire",type=int)#单位:天
         args = parser.parse_args()
         
-        dataBase = redis.from_url(os.environ.get("REDIS_URL"))
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
         
         if not dataBase.sismember("tokens",args["token"]):#鉴权
             return http_error(403,"Token invalid")
         if args["action"] == 0:
             md = md5()
             try:
-                md.update(args["link"].encode("utf-8"))
+                md.update(args["link"].encode())
             except AttributeError:#客户端可能没有提供链接
                 return http_error(400,"Link not provided")
             rdint = randint(0,31-5)
             key = md.hexdigest()[rdint:rdint+5]#从哈希散列中随机取5位作为key
-            dataBase.hset("links",key,args["link"])
+            dataBase.set(key,args["link"])
             
             responseJson = {"status":"success"}
             responseJson["link"] = os.environ.get("DOMAIN")+key
             responseJson["expire"] = 0
             
             if args["expire"] != None and args["expire"] != 0:#若过期时间存在且不为永久则设置
-                dataBase.expire("links",args["expire"]*86400)
+                dataBase.expire(key,args["expire"]*86400)
                 responseJson["expire"] = args["expire"]
             return responseJson,201
         
         if args["action"] == 1:
             if args["key"] == None:
                 return http_error(400,"Key not provided")
-            if not dataBase.hexists("links",args["key"]):
+            if dataBase.exists(args["key"]) and dataBase.type(args["key"]) == b'string':
+                dataBase.delete(args["key"])
+            else:
                 return http_error(404,"The link cannot be found in the database")
-            dataBase.hdel("links",args["key"])
             return {"status":"success","message":"Link deleted"},200
 api.add_resource(ShortLinkRoot, '/')
 
+class staticContent(Resource):
+    def get(self,key:str):
+        dataBase = redis.from_url(os.environ.get("DB_URL"))
+        content = dataBase.hget("static",key)
         
+        if content != None:
+            return Response(content.decode("utf-8"))
+        else:
+            return http_error(404,"The link cannot be found in the database")
+    def post(self,key:str):
+        return http_error(405)
+        
+api.add_resource(staticContent,'/static/<key>')        
 #http错误处理，通过用户代理判断应该返回什么错误内容
 def http_error(error_code:int,msg=None):
     responseJson = {"status":"error"}
