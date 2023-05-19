@@ -23,11 +23,10 @@ httpErrorMsg = {
 class ShortLink(Resource):
     def get(self,key:str):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
-        if not dataBase.type(key) == b'string':
-            return http_error(403)
-        link = dataBase.get(key)
-
-        if link is not None:
+        if dataBase.exists(key):
+            if not dataBase.type(key) == b'string':
+                return http_error(403)
+            link = dataBase.get(key)
             return redirect(link.decode("utf-8"))
         return http_error(404,"The link cannot be found in the database")
     def post(self,key:str):
@@ -66,7 +65,7 @@ class ShortLinkRoot(Resource):
             responseJson["expire"] = 0
 
             if args["expire"] is not None and args["expire"] != 0:#若过期时间存在且不为永久则设置
-                dataBase.expire(key,args["expire"]*86400)
+                dataBase.expire(key,int(args["expire"])*86400)
                 responseJson["expire"] = args["expire"]
             return responseJson,201
 
