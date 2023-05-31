@@ -43,7 +43,7 @@ class ShortLinkRoot(Resource):
         parser.add_argument("action",type=int, required=True)
         parser.add_argument("link",type=str)
         parser.add_argument("key",type=str)
-        parser.add_argument("expire",type=int)#单位:天
+        parser.add_argument("expire",type=int)#单位:秒
         args = parser.parse_args()
 
         dataBase = redis.from_url(os.environ.get("DB_URL"))
@@ -65,7 +65,7 @@ class ShortLinkRoot(Resource):
             responseJson["expire"] = 0
 
             if args["expire"] is not None and args["expire"] != 0:#若过期时间存在且不为永久则设置
-                dataBase.expire(key,int(args["expire"])*86400)
+                dataBase.expire(key,int(args["expire"]))
                 responseJson["expire"] = args["expire"]
             return responseJson,201
 
