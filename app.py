@@ -102,5 +102,5 @@ def http_error(error_code:int,msg=None):
 
     if str(request.user_agent).find("Mozilla") != -1:
         errorimg = get("https://http.cat/"+str(error_code)).content
-        return Response(errorimg,mimetype="image/jpeg")#浏览器则返回图片
+        return Response(errorimg,status=error_code,mimetype="image/jpeg")#浏览器则返回图片
     return responseJson,error_code #否则返回错误信息
