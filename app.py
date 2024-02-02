@@ -20,6 +20,14 @@ httpErrorMsg = {
     500: "Internal Error"
 }
 
+# 计算key:md5散列后取随机五位
+def calc_key(content:str) -> str:
+    md = md5()
+    md.update(bytes(content))
+    rdint = randint(0, 31 - 5)
+    return md.hexdigest()[rdint:rdint + 5]
+
+
 class ShortLink(Resource):
     def get(self,key:str):
         dataBase = redis.from_url(os.environ.get("DB_URL"))
@@ -44,31 +52,34 @@ class ShortLinkRoot(Resource):
         parser.add_argument("link",type=str)
         parser.add_argument("key",type=str)
         parser.add_argument("expire",type=int)#单位:秒
+        parser.add_argument("content",type=str) # 静态内容
         args = parser.parse_args()
 
         dataBase = redis.from_url(os.environ.get("DB_URL"))
 
-        if not dataBase.sismember("tokens",args["token"]):#鉴权
+        # 鉴权
+        if not dataBase.sismember("tokens",args["token"]):
             return http_error(403,"Token invalid")
+        
+        # add
         if args["action"] == 0:
-            md = md5()
             try:
-                md.update(args["link"].encode())
+               key = calc_key(args["link"])
             except AttributeError:#客户端可能没有提供链接
                 return http_error(400,"Link not provided")
-            rdint = randint(0,31-5)
-            key = md.hexdigest()[rdint:rdint+5]#从哈希散列中随机取5位作为key
             dataBase.set(key,args["link"])
 
             responseJson = {"status":"success"}
             responseJson["link"] = os.environ.get("DOMAIN")+key
             responseJson["expire"] = 0
 
-            if args["expire"] is not None and args["expire"] != 0:#若过期时间存在且不为永久则设置
+            if args["expire"] is not None and int(args["expire"]) != 0:#若过期时间存在且不为永久则设置
                 dataBase.expire(key,int(args["expire"]))
                 responseJson["expire"] = args["expire"]
+
             return responseJson,201
 
+        # delete
         if args["action"] == 1:
             if args["key"] is None:
                 return http_error(400,"Key not provided")
@@ -77,6 +88,25 @@ class ShortLinkRoot(Resource):
             else:
                 return http_error(404,"The link cannot be found in the database")
             return {"status":"success","message":"Link deleted"},200
+        
+        # add static
+        if args["action"] == 2:
+            try:
+                key = calc_key(args["content"])
+            except AttributeError:
+                return http_error(400, "Content not provided")
+            
+            dataBase.hset("static",key,args["content"])
+
+            responseJson = {"status":"success"}
+            responseJson["link"] = os.environ.get("DOMAIN") + f"static/{key}"
+            responseJson["expire"] = 0
+
+            if args["expire"] is not None and int(args["expire"]) != 0:
+                dataBase.hexpire("static",key,int(args["expire"]))
+                responseJson["expire"] = args["expire"]
+            return responseJson,201
+            
 api.add_resource(ShortLinkRoot, '/')
 
 class staticContent(Resource):
