@@ -23,7 +23,7 @@ httpErrorMsg = {
 # 计算key:md5散列后取随机五位
 def calc_key(content:str) -> str:
     md = md5()
-    md.update(bytes(content))
+    md.update(content.encode())
     rdint = randint(0, 31 - 5)
     return md.hexdigest()[rdint:rdint + 5]
 
@@ -62,7 +62,7 @@ class ShortLinkRoot(Resource):
             return http_error(403,"Token invalid")
         
         # add
-        if args["action"] == 0:
+        if int(args["action"]) == 0:
             try:
                key = calc_key(args["link"])
             except AttributeError:#客户端可能没有提供链接
@@ -80,7 +80,7 @@ class ShortLinkRoot(Resource):
             return responseJson,201
 
         # delete
-        if args["action"] == 1:
+        elif int(args["action"]) == 1:
             if args["key"] is None:
                 return http_error(400,"Key not provided")
             if dataBase.exists(args["key"]) and dataBase.type(args["key"]) == b'string':
@@ -90,7 +90,7 @@ class ShortLinkRoot(Resource):
             return {"status":"success","message":"Link deleted"},200
         
         # add static
-        if args["action"] == 2:
+        elif int(args["action"]) == 2:
             try:
                 key = calc_key(args["content"])
             except AttributeError:
@@ -106,6 +106,9 @@ class ShortLinkRoot(Resource):
                 dataBase.hexpire("static",key,int(args["expire"]))
                 responseJson["expire"] = args["expire"]
             return responseJson,201
+        
+        else:
+            return http_error(400, "Unknown action")
             
 api.add_resource(ShortLinkRoot, '/')
 
