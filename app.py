@@ -24,7 +24,7 @@ httpErrorMsg = {
 # 计算key:md5散列后取随机五位
 def calc_key(content:str) -> str:
     md = md5()
-    md.update(bytes(content + str(int(time.time()))))
+    md.update((content + str(int(time.time()))).encode())
     rdint = randint(0, 31 - 5)
     return md.hexdigest()[rdint:rdint + 5]
 
