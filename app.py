@@ -5,6 +5,7 @@ from flask_restful import Resource,Api,reqparse
 from requests import get
 import redis
 import os
+import time
 
 
 
@@ -23,7 +24,7 @@ httpErrorMsg = {
 # 计算key:md5散列后取随机五位
 def calc_key(content:str) -> str:
     md = md5()
-    md.update(content.encode())
+    md.update(bytes(content + str(int(time.time()))))
     rdint = randint(0, 31 - 5)
     return md.hexdigest()[rdint:rdint + 5]
 
